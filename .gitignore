@@ -6,6 +6,10 @@ __pycache__/
 # C extensions
 *.so
 
+collision_meshes
+*.zip
+*.pt
+
 # Distribution / packaging
 .Python
 build/

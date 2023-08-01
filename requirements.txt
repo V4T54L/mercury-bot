@@ -1,0 +1,15 @@
+gym==0.21.0
+gym-notices==0.0.8
+gymnasium==0.28.1
+numpy==1.21.6
+pickle5==0.0.12
+pickleshare==0.7.5
+requirements-parser==0.5.0
+rlbot==1.67.3
+rlgym==1.2.1
+rlgym-compat==1.0.2
+rlgym-sim==1.2.4
+stable-baselines3==1.8.0
+torch==1.13.1
+torch-tb-profiler==0.4.1
+torchvision==0.14.1
