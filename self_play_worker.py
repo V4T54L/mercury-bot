@@ -1,34 +1,37 @@
 import numpy as np
 from rlgym_sim.envs import Match
 from stable_baselines3 import PPO
-from stable_baselines3.common.callbacks import CheckpointCallback #, CallbackList
+from stable_baselines3.common.callbacks import CheckpointCallback, CallbackList
 from stable_baselines3.common.vec_env import VecMonitor, VecNormalize, VecCheckNan
+
 # from stable_baselines3.ppo import MlpPolicy
 
 import torch as T
 
-# from wandb.integration.sb3 import WandbCallback
-# import wandb
+from wandb.integration.sb3 import WandbCallback
+import wandb
 
 from rlgym_sim.utils.obs_builders import AdvancedObs
 from rlgym_sim.utils.state_setters import RandomState
 
-# from rlgym_sim.utils.terminal_conditions.common_conditions import (
-#     # NoTouchTimeoutCondition,
-#     TimeoutCondition,
-# )
+from rlgym_sim.utils.terminal_conditions.common_conditions import (
+    # NoTouchTimeoutCondition,
+    TimeoutCondition,
+)
 from extra_utils.goal_scored_reward import GoalScoredReward
 from extra_utils.terminal_condition import GoalScoredCondition
 from sb3_multi_inst_env import SB3MultipleInstanceEnv
 from helpers.lookup_action import LookupAction
-from helpers.extra_state_setters import GoaliePracticeState, WeightedSampleSetter, WallPracticeState
+from helpers.extra_state_setters import (
+    GoaliePracticeState,
+    WeightedSampleSetter,
+    WallPracticeState,
+)
 
 
 def main():
     frame_skip = 6
-    half_life_seconds = (
-        8
-    )
+    half_life_seconds = 8
 
     fps = 120 / frame_skip
     gamma = np.exp(np.log(0.5) / (fps * half_life_seconds))
@@ -38,11 +41,11 @@ def main():
     target_steps = 2_500_000
     steps = target_steps // (num_instances * agents_per_match)
 
-    if steps % batch_size != 0:
-        print(
-            "Please assign proper value for 'target_steps'",
-            "so steps is divisible by batch_size to maximize efficiency",
-        )
+    # if steps % batch_size != 0:
+    #     print(
+    #         "Please assign proper value for 'target_steps'",
+    #         "so steps is divisible by batch_size to maximize efficiency",
+    #     )
 
     training_interval = 25_000_000
     mmr_save_frequency = 50_000_000
@@ -60,20 +63,22 @@ def main():
             spawn_opponents=True,
             terminal_conditions=[
                 # NoTouchTimeoutCondition(800),
+                TimeoutCondition(500),
                 GoalScoredCondition(),
             ],
             obs_builder=AdvancedObs(),
             state_setter=WeightedSampleSetter(
-            (
-                RandomState(True, True, False),
-                GoaliePracticeState(
-                    allow_enemy_interference=True,
+                (
+                    RandomState(True, True, False),
+                    GoaliePracticeState(
+                        allow_enemy_interference=True,
+                    ),
+                    WallPracticeState(0.5, 0.2, 0.3),
                 ),
-                WallPracticeState(1 / 2, 1 / 8, 3 / 8),
+                (0.2, 0.5, 0.3),
             ),
-            (0.4, 0.3, 0.3),
-        ),
-            state_setter=RandomState(True, True, False),
+            # state_setter=RandomState(True, True, False),
+            # state_setter=GoaliePracticeState(allow_enemy_interference=True),
             action_parser=LookupAction(),  # Lookup > Discrete
         )
 
@@ -87,9 +92,7 @@ def main():
     )
     env = VecCheckNan(env)
     env = VecMonitor(env)
-    env = VecNormalize(
-        env, norm_obs=False, gamma=gamma
-    )
+    env = VecNormalize(env, norm_obs=False, gamma=gamma)
 
     try:
         device = T.device("cuda" if T.cuda.is_available() else "cpu")
@@ -108,8 +111,8 @@ def main():
             # custom_objects={"n_envs": env.num_envs, "n_steps": steps, "batch_size": batch_size, "n_epochs": 10, "learning_rate": 5e-5}
         )
         print("Loaded previous exit save.")
-    except:
-        print("No saved model found, creating new model.")
+    except Exception as e:
+        print("No saved model found, error : ", e)
         print("Exitting...")
         env.close()
         # return
@@ -136,6 +139,9 @@ def main():
         #     device="cpu",  # Uses GPU if available
         # )
 
+    wandb.init(
+        project="mercury-bot",
+    )
 
     ckpt_callback = CheckpointCallback(
         round(5_000_000 / env.num_envs),
@@ -143,7 +149,7 @@ def main():
         name_prefix="rl_model",
     )
 
-    # callback_list = CallbackList([ckpt_callback,WandbCallback()])
+    callback_list = CallbackList([ckpt_callback, WandbCallback()])
 
     try:
         mmr_model_target_count = model.num_timesteps + mmr_save_frequency
@@ -165,6 +171,7 @@ def main():
     print("Saving model")
     exit_save(model)
     print("Save complete")
+    wandb.finish()
 
 
 if __name__ == "__main__":  # Required for multiprocessing
