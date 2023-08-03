@@ -141,6 +141,8 @@ def main():
 
     wandb.init(
         project="mercury-bot",
+        job_type="training-mercury-bot",
+        sync_tensorboard=True,
     )
 
     ckpt_callback = CheckpointCallback(
@@ -156,7 +158,7 @@ def main():
         while True:
             model.learn(
                 training_interval,
-                callback=ckpt_callback,
+                callback=callback_list,
                 reset_num_timesteps=False,
                 tb_log_name="Mercury",
             )
