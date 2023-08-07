@@ -12,7 +12,11 @@ import wandb
 
 from sb3_multi_inst_env import SB3MultipleInstanceEnv
 
-from helpers.matches import get_random_goalie_match, get_replay_setter_match
+from helpers.matches import (
+    get_random_goalie_match,
+    get_replay_setter_match,
+    get_random_match,
+)
 
 
 def main():
@@ -32,7 +36,7 @@ def main():
 
     model_save_dir = "./models"
     model_save_path = model_save_dir + "/exit_save.zip"
-    replay_file_path = "path/to/states_scores_doubles.npz"
+    replay_file_path = "../NPZ_Data/states_scores_doubles.npz"
 
     def exit_save(model):
         model.save(model_save_path)
@@ -52,12 +56,13 @@ def main():
                 replay_file_path, starts[i], starts[i] + replay_batch_size
             )
             if i < n_replay_matches
-            else get_random_goalie_match()
+            # else get_random_goalie_match()
+            else get_random_match()
             for i in range(num_instances)
         ]
 
     env = SB3MultipleInstanceEnv(
-        get_matches_list(num_instances, 0.7),
+        get_matches_list(num_instances, 0.3),
         num_instances,
         wait_time=0,
         tick_skip=8,
@@ -88,7 +93,7 @@ def main():
         print("Exitting...")
         env.close()
 
-    wandb.tensorboard.patch(root_logdir="logs")
+    wandb.tensorboard.patch(root_logdir="logs/Mercury_0")
     wandb.init(
         project="mercury-bot",
         job_type="training-mercury-bot",
@@ -119,6 +124,9 @@ def main():
 
     except KeyboardInterrupt:
         print("Exiting training")
+
+    except Exception as e:
+        print("Uncaught exception :", e)
 
     print("Saving model")
     exit_save(model)

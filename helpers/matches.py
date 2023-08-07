@@ -53,3 +53,18 @@ def get_random_goalie_match(timeout: int = 300):
         ),
         action_parser=LookupAction(),
     )
+
+
+def get_random_match(timeout: int = 800):
+    return Match(
+        team_size=2,
+        reward_function=GoalScoredReward(),
+        spawn_opponents=True,
+        obs_builder=AdvancedObs(),
+        terminal_conditions=[
+            GoalScoredCondition(),
+            TimeoutCondition(timeout),
+        ],
+        state_setter=RandomState(True, True, False),
+        action_parser=LookupAction(),
+    )
